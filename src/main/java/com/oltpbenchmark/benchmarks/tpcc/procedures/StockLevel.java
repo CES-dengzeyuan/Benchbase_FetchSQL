@@ -17,6 +17,7 @@
 
 package com.oltpbenchmark.benchmarks.tpcc.procedures;
 
+import com.oltpbenchmark.api.AppendSQL;
 import com.oltpbenchmark.api.SQLStmt;
 import com.oltpbenchmark.benchmarks.tpcc.TPCCConstants;
 import com.oltpbenchmark.benchmarks.tpcc.TPCCUtil;
@@ -36,20 +37,20 @@ public class StockLevel extends TPCCProcedure {
 
     public SQLStmt stockGetDistOrderIdSQL = new SQLStmt(
             "SELECT D_NEXT_O_ID " +
-            "  FROM " + TPCCConstants.TABLENAME_DISTRICT +
-            " WHERE D_W_ID = ? " +
-            "   AND D_ID = ?");
+                    "  FROM " + TPCCConstants.TABLENAME_DISTRICT +
+                    " WHERE D_W_ID = ? " +
+                    "   AND D_ID = ?");
 
     public SQLStmt stockGetCountStockSQL = new SQLStmt(
             "SELECT COUNT(DISTINCT (S_I_ID)) AS STOCK_COUNT " +
-            " FROM " + TPCCConstants.TABLENAME_ORDERLINE + ", " + TPCCConstants.TABLENAME_STOCK +
-            " WHERE OL_W_ID = ?" +
-            " AND OL_D_ID = ?" +
-            " AND OL_O_ID < ?" +
-            " AND OL_O_ID >= ?" +
-            " AND S_W_ID = ?" +
-            " AND S_I_ID = OL_I_ID" +
-            " AND S_QUANTITY < ?");
+                    " FROM " + TPCCConstants.TABLENAME_ORDERLINE + ", " + TPCCConstants.TABLENAME_STOCK +
+                    " WHERE OL_W_ID = ?" +
+                    " AND OL_D_ID = ?" +
+                    " AND OL_O_ID < ?" +
+                    " AND OL_O_ID >= ?" +
+                    " AND S_W_ID = ?" +
+                    " AND S_I_ID = OL_I_ID" +
+                    " AND S_QUANTITY < ?");
 
     public void run(Connection conn, Random gen, int w_id, int numWarehouses, int terminalDistrictLowerID, int terminalDistrictUpperID, TPCCWorker w) throws SQLException {
 
@@ -59,18 +60,19 @@ public class StockLevel extends TPCCProcedure {
         int o_id = getOrderId(conn, w_id, d_id);
 
         int stock_count = getStockCount(conn, w_id, threshold, d_id, o_id);
+        AppendSQL.appendSql("TPCCWorker.sql", "EOF\n");
 
         if (LOG.isTraceEnabled()) {
             String terminalMessage = "\n+-------------------------- STOCK-LEVEL --------------------------+" +
-                                     "\n Warehouse: " +
-                                     w_id +
-                                     "\n District:  " +
-                                     d_id +
-                                     "\n\n Stock Level Threshold: " +
-                                     threshold +
-                                     "\n Low Stock Count:       " +
-                                     stock_count +
-                                     "\n+-----------------------------------------------------------------+\n\n";
+                    "\n Warehouse: " +
+                    w_id +
+                    "\n District:  " +
+                    d_id +
+                    "\n\n Stock Level Threshold: " +
+                    threshold +
+                    "\n Low Stock Count:       " +
+                    stock_count +
+                    "\n+-----------------------------------------------------------------+\n\n";
             LOG.trace(terminalMessage);
         }
 
@@ -81,9 +83,8 @@ public class StockLevel extends TPCCProcedure {
         try (PreparedStatement stockGetDistOrderId = this.getPreparedStatement(conn, stockGetDistOrderIdSQL)) {
             stockGetDistOrderId.setInt(1, w_id);
             stockGetDistOrderId.setInt(2, d_id);
-
+            AppendSQL.appendSql("TPCCWorker.sql", stockGetDistOrderId.toString());
             try (ResultSet rs = stockGetDistOrderId.executeQuery()) {
-
                 if (!rs.next()) {
                     throw new RuntimeException("D_W_ID=" + w_id + " D_ID=" + d_id + " not found!");
                 }
@@ -102,13 +103,12 @@ public class StockLevel extends TPCCProcedure {
             stockGetCountStock.setInt(5, w_id);
             stockGetCountStock.setInt(6, threshold);
 
+            AppendSQL.appendSql("TPCCWorker.sql", stockGetCountStock.toString());
             try (ResultSet rs = stockGetCountStock.executeQuery()) {
                 if (!rs.next()) {
                     String msg = String.format("Failed to get StockLevel result for COUNT query [W_ID=%d, D_ID=%d, O_ID=%d]", w_id, d_id, o_id);
-
                     throw new RuntimeException(msg);
                 }
-
                 return rs.getInt("STOCK_COUNT");
             }
         }

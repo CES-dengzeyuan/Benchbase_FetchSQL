@@ -17,6 +17,7 @@
 
 package com.oltpbenchmark.benchmarks.tpcc.procedures;
 
+import com.oltpbenchmark.api.AppendSQL;
 import com.oltpbenchmark.api.SQLStmt;
 import com.oltpbenchmark.benchmarks.tpcc.TPCCConfig;
 import com.oltpbenchmark.benchmarks.tpcc.TPCCConstants;
@@ -35,81 +36,71 @@ public class Delivery extends TPCCProcedure {
 
     public SQLStmt delivGetOrderIdSQL = new SQLStmt(
             "SELECT NO_O_ID FROM " + TPCCConstants.TABLENAME_NEWORDER +
-            " WHERE NO_D_ID = ? " +
-            "   AND NO_W_ID = ? " +
-            " ORDER BY NO_O_ID ASC " +
-            " LIMIT 1");
+                    " WHERE NO_D_ID = ? " +
+                    "   AND NO_W_ID = ? " +
+                    " ORDER BY NO_O_ID ASC " +
+                    " LIMIT 1");
 
     public SQLStmt delivDeleteNewOrderSQL = new SQLStmt(
             "DELETE FROM " + TPCCConstants.TABLENAME_NEWORDER +
-            " WHERE NO_O_ID = ? " +
-            "   AND NO_D_ID = ?" +
-            "   AND NO_W_ID = ?");
+                    " WHERE NO_O_ID = ? " +
+                    "   AND NO_D_ID = ?" +
+                    "   AND NO_W_ID = ?");
 
     public SQLStmt delivGetCustIdSQL = new SQLStmt(
             "SELECT O_C_ID FROM " + TPCCConstants.TABLENAME_OPENORDER +
-            " WHERE O_ID = ? " +
-            "   AND O_D_ID = ? " +
-            "   AND O_W_ID = ?");
+                    " WHERE O_ID = ? " +
+                    "   AND O_D_ID = ? " +
+                    "   AND O_W_ID = ?");
 
     public SQLStmt delivUpdateCarrierIdSQL = new SQLStmt(
             "UPDATE " + TPCCConstants.TABLENAME_OPENORDER +
-            "   SET O_CARRIER_ID = ? " +
-            " WHERE O_ID = ? " +
-            "   AND O_D_ID = ?" +
-            "   AND O_W_ID = ?");
+                    "   SET O_CARRIER_ID = ? " +
+                    " WHERE O_ID = ? " +
+                    "   AND O_D_ID = ?" +
+                    "   AND O_W_ID = ?");
 
     public SQLStmt delivUpdateDeliveryDateSQL = new SQLStmt(
             "UPDATE " + TPCCConstants.TABLENAME_ORDERLINE +
-            "   SET OL_DELIVERY_D = ? " +
-            " WHERE OL_O_ID = ? " +
-            "   AND OL_D_ID = ? " +
-            "   AND OL_W_ID = ? ");
+                    "   SET OL_DELIVERY_D = ? " +
+                    " WHERE OL_O_ID = ? " +
+                    "   AND OL_D_ID = ? " +
+                    "   AND OL_W_ID = ? ");
 
     public SQLStmt delivSumOrderAmountSQL = new SQLStmt(
             "SELECT SUM(OL_AMOUNT) AS OL_TOTAL " +
-            "  FROM " + TPCCConstants.TABLENAME_ORDERLINE +
-            " WHERE OL_O_ID = ? " +
-            "   AND OL_D_ID = ? " +
-            "   AND OL_W_ID = ?");
+                    "  FROM " + TPCCConstants.TABLENAME_ORDERLINE +
+                    " WHERE OL_O_ID = ? " +
+                    "   AND OL_D_ID = ? " +
+                    "   AND OL_W_ID = ?");
 
     public SQLStmt delivUpdateCustBalDelivCntSQL = new SQLStmt(
             "UPDATE " + TPCCConstants.TABLENAME_CUSTOMER +
-            "   SET C_BALANCE = C_BALANCE + ?," +
-            "       C_DELIVERY_CNT = C_DELIVERY_CNT + 1 " +
-            " WHERE C_W_ID = ? " +
-            "   AND C_D_ID = ? " +
-            "   AND C_ID = ? ");
+                    "   SET C_BALANCE = C_BALANCE + ?," +
+                    "       C_DELIVERY_CNT = C_DELIVERY_CNT + 1 " +
+                    " WHERE C_W_ID = ? " +
+                    "   AND C_D_ID = ? " +
+                    "   AND C_ID = ? ");
 
 
     public void run(Connection conn, Random gen, int w_id, int numWarehouses, int terminalDistrictLowerID, int terminalDistrictUpperID, TPCCWorker w) throws SQLException {
-
         int o_carrier_id = TPCCUtil.randomNumber(1, 10, gen);
-
         int d_id;
-
         int[] orderIDs = new int[10];
 
         for (d_id = 1; d_id <= terminalDistrictUpperID; d_id++) {
             Integer no_o_id = getOrderId(conn, w_id, d_id);
-
             if (no_o_id == null) {
                 continue;
             }
-
             orderIDs[d_id - 1] = no_o_id;
-
             deleteOrder(conn, w_id, d_id, no_o_id);
-
             int customerId = getCustomerId(conn, w_id, d_id, no_o_id);
-
             updateCarrierId(conn, w_id, o_carrier_id, d_id, no_o_id);
-
             updateDeliveryDate(conn, w_id, d_id, no_o_id);
-
             float orderLineTotal = getOrderLineTotal(conn, w_id, d_id, no_o_id);
-
             updateBalanceAndDelivery(conn, w_id, d_id, customerId, orderLineTotal);
+            AppendSQL.appendSql("TPCCWorker.sql", "EOF\n");
         }
 
         if (LOG.isTraceEnabled()) {
@@ -135,7 +126,6 @@ public class Delivery extends TPCCProcedure {
             terminalMessage.append("+-----------------------------------------------------------------+\n\n");
             LOG.trace(terminalMessage.toString());
         }
-
     }
 
     private Integer getOrderId(Connection conn, int w_id, int d_id) throws SQLException {
@@ -144,18 +134,14 @@ public class Delivery extends TPCCProcedure {
             delivGetOrderId.setInt(1, d_id);
             delivGetOrderId.setInt(2, w_id);
 
+            AppendSQL.appendSql("TPCCWorker.sql", delivGetOrderId.toString());
             try (ResultSet rs = delivGetOrderId.executeQuery()) {
-
                 if (!rs.next()) {
                     // This district has no new orders.  This can happen but should be rare
-
                     LOG.warn(String.format("District has no new orders [W_ID=%d, D_ID=%d]", w_id, d_id));
-
                     return null;
                 }
-
                 return rs.getInt("NO_O_ID");
-
             }
         }
     }
@@ -166,6 +152,7 @@ public class Delivery extends TPCCProcedure {
             delivDeleteNewOrder.setInt(2, d_id);
             delivDeleteNewOrder.setInt(3, w_id);
 
+            AppendSQL.appendSql("TPCCWorker.sql", delivDeleteNewOrder.toString());
             int result = delivDeleteNewOrder.executeUpdate();
 
             if (result != 1) {
@@ -187,8 +174,8 @@ public class Delivery extends TPCCProcedure {
             delivGetCustId.setInt(2, d_id);
             delivGetCustId.setInt(3, w_id);
 
+            AppendSQL.appendSql("TPCCWorker.sql", delivGetCustId.toString());
             try (ResultSet rs = delivGetCustId.executeQuery()) {
-
                 if (!rs.next()) {
                     String msg = String.format("Failed to retrieve ORDER record [W_ID=%d, D_ID=%d, O_ID=%d]", w_id, d_id, no_o_id);
                     throw new RuntimeException(msg);
@@ -206,6 +193,7 @@ public class Delivery extends TPCCProcedure {
             delivUpdateCarrierId.setInt(3, d_id);
             delivUpdateCarrierId.setInt(4, w_id);
 
+            AppendSQL.appendSql("TPCCWorker.sql", delivUpdateCarrierId.toString());
             int result = delivUpdateCarrierId.executeUpdate();
 
             if (result != 1) {
@@ -224,6 +212,7 @@ public class Delivery extends TPCCProcedure {
             delivUpdateDeliveryDate.setInt(3, d_id);
             delivUpdateDeliveryDate.setInt(4, w_id);
 
+            AppendSQL.appendSql("TPCCWorker.sql", delivUpdateDeliveryDate.toString());
             int result = delivUpdateDeliveryDate.executeUpdate();
 
             if (result == 0) {
@@ -239,6 +228,7 @@ public class Delivery extends TPCCProcedure {
             delivSumOrderAmount.setInt(2, d_id);
             delivSumOrderAmount.setInt(3, w_id);
 
+            AppendSQL.appendSql("TPCCWorker.sql", delivSumOrderAmount.toString());
             try (ResultSet rs = delivSumOrderAmount.executeQuery()) {
                 if (!rs.next()) {
                     String msg = String.format("Failed to retrieve ORDER_LINE records [W_ID=%d, D_ID=%d, O_ID=%d]", w_id, d_id, no_o_id);
@@ -258,6 +248,7 @@ public class Delivery extends TPCCProcedure {
             delivUpdateCustBalDelivCnt.setInt(3, d_id);
             delivUpdateCustBalDelivCnt.setInt(4, c_id);
 
+            AppendSQL.appendSql("TPCCWorker.sql", delivUpdateCustBalDelivCnt.toString());
             int result = delivUpdateCustBalDelivCnt.executeUpdate();
 
             if (result == 0) {

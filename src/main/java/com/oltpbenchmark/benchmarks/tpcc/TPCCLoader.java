@@ -18,6 +18,7 @@
 
 package com.oltpbenchmark.benchmarks.tpcc;
 
+import com.oltpbenchmark.api.AppendSQL;
 import com.oltpbenchmark.api.Loader;
 import com.oltpbenchmark.api.LoaderThread;
 import com.oltpbenchmark.benchmarks.tpcc.pojo.*;
@@ -120,14 +121,12 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
                     }
                     // ORDER LINES
                     loadOrderLines(conn, w_id, TPCCConfig.configDistPerWhse, TPCCConfig.configCustPerDist);
-
+//                    AppendSQL.appendSql("TPCCLoader.sql", "EOF\n");
                 }
 
                 @Override
                 public void beforeLoad() {
-
                     // Make sure that we load the ITEM table first
-
                     try {
                         itemLatch.await();
                     } catch (InterruptedException ex) {
@@ -204,10 +203,8 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
 
 
     protected void loadWarehouse(Connection conn, int w_id) {
-
         try (PreparedStatement whsePrepStmt = getInsertStatement(conn, TPCCConstants.TABLENAME_WAREHOUSE)) {
             Warehouse warehouse = new Warehouse();
-
             warehouse.w_id = w_id;
             warehouse.w_ytd = 300000;
 
@@ -230,6 +227,8 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
             whsePrepStmt.setString(idx++, warehouse.w_city);
             whsePrepStmt.setString(idx++, warehouse.w_state);
             whsePrepStmt.setString(idx, warehouse.w_zip);
+
+            AppendSQL.appendSql("TPCCLoader.sql", whsePrepStmt.toString());
             whsePrepStmt.execute();
 
         } catch (SQLException se) {
@@ -239,11 +238,8 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
     }
 
     protected void loadStock(Connection conn, int w_id, int numItems) {
-
         int k = 0;
-
         try (PreparedStatement stockPreparedStatement = getInsertStatement(conn, TPCCConstants.TABLENAME_STOCK)) {
-
             for (int i = 1; i <= numItems; i++) {
                 Stock stock = new Stock();
                 stock.s_i_id = i;
@@ -285,19 +281,17 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
                 stockPreparedStatement.setString(idx++, TPCCUtil.randomStr(24));
                 stockPreparedStatement.setString(idx++, TPCCUtil.randomStr(24));
                 stockPreparedStatement.setString(idx, TPCCUtil.randomStr(24));
+
+                AppendSQL.appendSql("TPCCLoader.sql", stockPreparedStatement.toString());
                 stockPreparedStatement.addBatch();
-
                 k++;
-
                 if (k != 0 && (k % workConf.getBatchSize()) == 0) {
                     stockPreparedStatement.executeBatch();
                     stockPreparedStatement.clearBatch();
                 }
             }
-
             stockPreparedStatement.executeBatch();
             stockPreparedStatement.clearBatch();
-
         } catch (SQLException se) {
             LOG.error(se.getMessage());
         }
@@ -305,18 +299,14 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
     }
 
     protected void loadDistricts(Connection conn, int w_id, int districtsPerWarehouse) {
-
         try (PreparedStatement distPrepStmt = getInsertStatement(conn, TPCCConstants.TABLENAME_DISTRICT)) {
-
             for (int d = 1; d <= districtsPerWarehouse; d++) {
                 District district = new District();
                 district.d_id = d;
                 district.d_w_id = w_id;
                 district.d_ytd = 30000;
-
                 // random within [0.0000 .. 0.2000]
                 district.d_tax = (float) ((TPCCUtil.randomNumber(0, 2000, benchmark.rng())) / 10000.0);
-
                 district.d_next_o_id = TPCCConfig.configCustPerDist + 1;
                 district.d_name = TPCCUtil.randomStr(TPCCUtil.randomNumber(6, 10, benchmark.rng()));
                 district.d_street_1 = TPCCUtil.randomStr(TPCCUtil.randomNumber(10, 20, benchmark.rng()));
@@ -337,9 +327,10 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
                 distPrepStmt.setString(idx++, district.d_city);
                 distPrepStmt.setString(idx++, district.d_state);
                 distPrepStmt.setString(idx, district.d_zip);
+
+                AppendSQL.appendSql("TPCCLoader.sql", distPrepStmt.toString());
                 distPrepStmt.executeUpdate();
             }
-
         } catch (SQLException se) {
             LOG.error(se.getMessage());
         }
@@ -347,23 +338,17 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
     }
 
     protected void loadCustomers(Connection conn, int w_id, int districtsPerWarehouse, int customersPerDistrict) {
-
         int k = 0;
-
         try (PreparedStatement custPrepStmt = getInsertStatement(conn, TPCCConstants.TABLENAME_CUSTOMER)) {
-
             for (int d = 1; d <= districtsPerWarehouse; d++) {
                 for (int c = 1; c <= customersPerDistrict; c++) {
                     Timestamp sysdate = new Timestamp(System.currentTimeMillis());
-
                     Customer customer = new Customer();
                     customer.c_id = c;
                     customer.c_d_id = d;
                     customer.c_w_id = w_id;
-
                     // discount is random between [0.0000 ... 0.5000]
                     customer.c_discount = (float) (TPCCUtil.randomNumber(1, 5000, benchmark.rng()) / 10000.0);
-
                     if (TPCCUtil.randomNumber(1, 100, benchmark.rng()) <= 10) {
                         customer.c_credit = "BC"; // 10% Bad Credit
                     } else {
@@ -376,7 +361,6 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
                     }
                     customer.c_first = TPCCUtil.randomStr(TPCCUtil.randomNumber(8, 16, benchmark.rng()));
                     customer.c_credit_lim = 50000;
-
                     customer.c_balance = -10;
                     customer.c_ytd_payment = 10;
                     customer.c_payment_cnt = 1;
@@ -415,36 +399,28 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
                     custPrepStmt.setTimestamp(idx++, customer.c_since);
                     custPrepStmt.setString(idx++, customer.c_middle);
                     custPrepStmt.setString(idx, customer.c_data);
+                    AppendSQL.appendSql("TPCCLoader.sql", custPrepStmt.toString());
                     custPrepStmt.addBatch();
-
                     k++;
-
                     if (k != 0 && (k % workConf.getBatchSize()) == 0) {
                         custPrepStmt.executeBatch();
                         custPrepStmt.clearBatch();
                     }
                 }
             }
-
             custPrepStmt.executeBatch();
             custPrepStmt.clearBatch();
-
         } catch (SQLException se) {
             LOG.error(se.getMessage());
         }
-
     }
 
     protected void loadCustomerHistory(Connection conn, int w_id, int districtsPerWarehouse, int customersPerDistrict) {
-
         int k = 0;
-
         try (PreparedStatement histPrepStmt = getInsertStatement(conn, TPCCConstants.TABLENAME_HISTORY)) {
-
             for (int d = 1; d <= districtsPerWarehouse; d++) {
                 for (int c = 1; c <= customersPerDistrict; c++) {
                     Timestamp sysdate = new Timestamp(System.currentTimeMillis());
-
                     History history = new History();
                     history.h_c_id = c;
                     history.h_c_d_id = d;
@@ -454,8 +430,6 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
                     history.h_date = sysdate;
                     history.h_amount = 10;
                     history.h_data = TPCCUtil.randomStr(TPCCUtil.randomNumber(10, 24, benchmark.rng()));
-
-
                     int idx = 1;
                     histPrepStmt.setInt(idx++, history.h_c_id);
                     histPrepStmt.setInt(idx++, history.h_c_d_id);
@@ -465,32 +439,25 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
                     histPrepStmt.setTimestamp(idx++, history.h_date);
                     histPrepStmt.setDouble(idx++, history.h_amount);
                     histPrepStmt.setString(idx, history.h_data);
+                    AppendSQL.appendSql("TPCCLoader.sql", histPrepStmt.toString());
                     histPrepStmt.addBatch();
-
                     k++;
-
                     if (k != 0 && (k % workConf.getBatchSize()) == 0) {
                         histPrepStmt.executeBatch();
                         histPrepStmt.clearBatch();
                     }
                 }
             }
-
             histPrepStmt.executeBatch();
             histPrepStmt.clearBatch();
-
         } catch (SQLException se) {
             LOG.error(se.getMessage());
         }
-
     }
 
     protected void loadOpenOrders(Connection conn, int w_id, int districtsPerWarehouse, int customersPerDistrict) {
-
         int k = 0;
-
         try (PreparedStatement openOrderStatement = getInsertStatement(conn, TPCCConstants.TABLENAME_OPENORDER)) {
-
             for (int d = 1; d <= districtsPerWarehouse; d++) {
                 // TPC-C 4.3.3.1: o_c_id must be a permutation of [1, 3000]
                 int[] c_ids = new int[customersPerDistrict];
@@ -502,14 +469,12 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
                 for (int i = 0; i < c_ids.length - 1; ++i) {
                     int remaining = c_ids.length - i - 1;
                     int swapIndex = benchmark.rng().nextInt(remaining) + i + 1;
-
                     int temp = c_ids[swapIndex];
                     c_ids[swapIndex] = c_ids[i];
                     c_ids[i] = temp;
                 }
 
                 for (int c = 1; c <= customersPerDistrict; c++) {
-
                     Oorder oorder = new Oorder();
                     oorder.o_id = c;
                     oorder.o_w_id = w_id;
@@ -525,8 +490,6 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
                     oorder.o_ol_cnt = getRandomCount(w_id, c, d);
                     oorder.o_all_local = 1;
                     oorder.o_entry_d = new Timestamp(System.currentTimeMillis());
-
-
                     int idx = 1;
                     openOrderStatement.setInt(idx++, oorder.o_w_id);
                     openOrderStatement.setInt(idx++, oorder.o_d_id);
@@ -540,26 +503,20 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
                     openOrderStatement.setInt(idx++, oorder.o_ol_cnt);
                     openOrderStatement.setInt(idx++, oorder.o_all_local);
                     openOrderStatement.setTimestamp(idx, oorder.o_entry_d);
+                    AppendSQL.appendSql("TPCCLoader.sql", openOrderStatement.toString());
                     openOrderStatement.addBatch();
-
                     k++;
-
                     if (k != 0 && (k % workConf.getBatchSize()) == 0) {
                         openOrderStatement.executeBatch();
                         openOrderStatement.clearBatch();
                     }
-
                 }
-
             }
-
             openOrderStatement.executeBatch();
             openOrderStatement.clearBatch();
-
         } catch (SQLException se) {
             LOG.error(se.getMessage(), se);
         }
-
     }
 
     private int getRandomCount(int w_id, int c, int d) {
@@ -574,15 +531,10 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
     }
 
     protected void loadNewOrders(Connection conn, int w_id, int districtsPerWarehouse, int customersPerDistrict) {
-
         int k = 0;
-
         try (PreparedStatement newOrderStatement = getInsertStatement(conn, TPCCConstants.TABLENAME_NEWORDER)) {
-
             for (int d = 1; d <= districtsPerWarehouse; d++) {
-
                 for (int c = 1; c <= customersPerDistrict; c++) {
-
                     // 900 rows in the NEW-ORDER table corresponding to the last
                     // 900 rows in the ORDER table for that district (i.e.,
                     // with NO_O_ID between 2,101 and 3,000)
@@ -596,41 +548,29 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
                         newOrderStatement.setInt(idx++, new_order.no_w_id);
                         newOrderStatement.setInt(idx++, new_order.no_d_id);
                         newOrderStatement.setInt(idx, new_order.no_o_id);
+                        AppendSQL.appendSql("TPCCLoader.sql", newOrderStatement.toString());
                         newOrderStatement.addBatch();
-
                         k++;
                     }
-
                     if (k != 0 && (k % workConf.getBatchSize()) == 0) {
                         newOrderStatement.executeBatch();
                         newOrderStatement.clearBatch();
                     }
-
                 }
-
             }
-
             newOrderStatement.executeBatch();
             newOrderStatement.clearBatch();
-
         } catch (SQLException se) {
             LOG.error(se.getMessage(), se);
         }
-
     }
 
     protected void loadOrderLines(Connection conn, int w_id, int districtsPerWarehouse, int customersPerDistrict) {
-
         int k = 0;
-
         try (PreparedStatement orderLineStatement = getInsertStatement(conn, TPCCConstants.TABLENAME_ORDERLINE)) {
-
             for (int d = 1; d <= districtsPerWarehouse; d++) {
-
                 for (int c = 1; c <= customersPerDistrict; c++) {
-
                     int count = getRandomCount(w_id, c, d);
-
                     for (int l = 1; l <= count; l++) {
                         OrderLine order_line = new OrderLine();
                         order_line.ol_w_id = w_id;
@@ -665,28 +605,21 @@ public class TPCCLoader extends Loader<TPCCBenchmark> {
                         orderLineStatement.setLong(idx++, order_line.ol_supply_w_id);
                         orderLineStatement.setDouble(idx++, order_line.ol_quantity);
                         orderLineStatement.setString(idx, order_line.ol_dist_info);
+
+                        AppendSQL.appendSql("TPCCLoader.sql", orderLineStatement.toString());
                         orderLineStatement.addBatch();
-
                         k++;
-
                         if (k != 0 && (k % workConf.getBatchSize()) == 0) {
                             orderLineStatement.executeBatch();
                             orderLineStatement.clearBatch();
                         }
-
                     }
-
                 }
-
             }
-
             orderLineStatement.executeBatch();
             orderLineStatement.clearBatch();
-
         } catch (SQLException se) {
             LOG.error(se.getMessage(), se);
         }
-
     }
-
 }

@@ -17,6 +17,7 @@
 
 package com.oltpbenchmark.benchmarks.ycsb.procedures;
 
+import com.oltpbenchmark.api.AppendSQL;
 import com.oltpbenchmark.api.Procedure;
 import com.oltpbenchmark.api.SQLStmt;
 import com.oltpbenchmark.benchmarks.ycsb.YCSBConstants;
@@ -43,6 +44,7 @@ public class ReadModifyWriteRecord extends Procedure {
         // Fetch it!
         try (PreparedStatement stmt = this.getPreparedStatement(conn, selectStmt)) {
             stmt.setInt(1, keyname);
+            AppendSQL.appendSql("YCSBWorker.sql", stmt.toString());
             try (ResultSet r = stmt.executeQuery()) {
                 while (r.next()) {
                     for (int i = 0; i < YCSBConstants.NUM_FIELDS; i++) {
@@ -56,13 +58,13 @@ public class ReadModifyWriteRecord extends Procedure {
         // Update that mofo
         try (PreparedStatement stmt = this.getPreparedStatement(conn, updateAllStmt)) {
             stmt.setInt(11, keyname);
-
             for (int i = 0; i < fields.length; i++) {
                 stmt.setString(i + 1, fields[i]);
             }
+            AppendSQL.appendSql("YCSBWorker.sql", stmt.toString());
             stmt.executeUpdate();
         }
-
+        AppendSQL.appendSql("YCSBWorker.sql", "EOF\n");
     }
 
 }

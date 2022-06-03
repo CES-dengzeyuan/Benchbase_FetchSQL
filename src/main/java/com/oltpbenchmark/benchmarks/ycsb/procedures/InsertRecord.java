@@ -17,6 +17,7 @@
 
 package com.oltpbenchmark.benchmarks.ycsb.procedures;
 
+import com.oltpbenchmark.api.AppendSQL;
 import com.oltpbenchmark.api.Procedure;
 import com.oltpbenchmark.api.SQLStmt;
 
@@ -38,8 +39,10 @@ public class InsertRecord extends Procedure {
             for (int i = 0; i < vals.length; i++) {
                 stmt.setString(i + 2, vals[i]);
             }
+            AppendSQL.appendSql("YCSBWorker.sql", stmt.toString());
             stmt.executeUpdate();
         }
+        AppendSQL.appendSql("YCSBWorker.sql", "EOF\n");
     }
 
 }

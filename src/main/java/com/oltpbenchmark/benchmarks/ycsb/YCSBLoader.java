@@ -17,6 +17,7 @@
 
 package com.oltpbenchmark.benchmarks.ycsb;
 
+import com.oltpbenchmark.api.AppendSQL;
 import com.oltpbenchmark.api.Loader;
 import com.oltpbenchmark.api.LoaderThread;
 import com.oltpbenchmark.catalog.Table;
@@ -63,8 +64,6 @@ class YCSBLoader extends Loader<YCSBBenchmark> {
 
     private void loadRecords(Connection conn, int start, int stop) throws SQLException {
         Table catalog_tbl = benchmark.getCatalog().getTable("USERTABLE");
-
-
         String sql = SQLUtil.getInsertSQL(catalog_tbl, this.getDatabaseType());
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             long total = 0;
@@ -74,11 +73,12 @@ class YCSBLoader extends Loader<YCSBBenchmark> {
                 for (int j = 0; j < YCSBConstants.NUM_FIELDS; j++) {
                     stmt.setString(j + 2, TextGenerator.randomStr(rng(), benchmark.fieldSize));
                 }
+                AppendSQL.appendSql("YCSBLoader.sql", stmt.toString());
                 stmt.addBatch();
                 total++;
+
                 if (++batch >= workConf.getBatchSize()) {
                     int[] result = stmt.executeBatch();
-
                     batch = 0;
                     if (LOG.isDebugEnabled()) {
                         LOG.debug(String.format("Records Loaded %d / %d", total, this.num_record));

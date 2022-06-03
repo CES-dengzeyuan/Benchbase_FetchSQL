@@ -17,6 +17,7 @@
 
 package com.oltpbenchmark.benchmarks.ycsb.procedures;
 
+import com.oltpbenchmark.api.AppendSQL;
 import com.oltpbenchmark.api.Procedure;
 import com.oltpbenchmark.api.SQLStmt;
 
@@ -35,13 +36,14 @@ public class UpdateRecord extends Procedure {
 
     public void run(Connection conn, int keyname, String[] vals) throws SQLException {
         try (PreparedStatement stmt = this.getPreparedStatement(conn, updateAllStmt)) {
-
             stmt.setInt(11, keyname);
             for (int i = 0; i < vals.length; i++) {
                 stmt.setString(i + 1, vals[i]);
             }
+            AppendSQL.appendSql("YCSBWorker.sql", stmt.toString());
             stmt.executeUpdate();
         }
+        AppendSQL.appendSql("YCSBWorker.sql", "EOF\n");
     }
 }
 

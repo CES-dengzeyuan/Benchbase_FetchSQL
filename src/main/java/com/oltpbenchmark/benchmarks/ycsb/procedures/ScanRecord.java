@@ -17,6 +17,7 @@
 
 package com.oltpbenchmark.benchmarks.ycsb.procedures;
 
+import com.oltpbenchmark.api.AppendSQL;
 import com.oltpbenchmark.api.Procedure;
 import com.oltpbenchmark.api.SQLStmt;
 import com.oltpbenchmark.benchmarks.ycsb.YCSBConstants;
@@ -39,6 +40,7 @@ public class ScanRecord extends Procedure {
         try (PreparedStatement stmt = this.getPreparedStatement(conn, scanStmt)) {
             stmt.setInt(1, start);
             stmt.setInt(2, start + count);
+            AppendSQL.appendSql("YCSBWorker.sql", stmt.toString());
             try (ResultSet r = stmt.executeQuery()) {
                 while (r.next()) {
                     String[] data = new String[YCSBConstants.NUM_FIELDS];
@@ -49,5 +51,6 @@ public class ScanRecord extends Procedure {
                 }
             }
         }
+        AppendSQL.appendSql("YCSBWorker.sql", "EOF\n");
     }
 }

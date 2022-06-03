@@ -17,6 +17,7 @@
 
 package com.oltpbenchmark.benchmarks.ycsb.procedures;
 
+import com.oltpbenchmark.api.AppendSQL;
 import com.oltpbenchmark.api.Procedure;
 import com.oltpbenchmark.api.SQLStmt;
 
@@ -35,8 +36,10 @@ public class DeleteRecord extends Procedure {
     public void run(Connection conn, int keyname) throws SQLException {
         try (PreparedStatement stmt = this.getPreparedStatement(conn, deleteStmt)) {
             stmt.setInt(1, keyname);
+            AppendSQL.appendSql("YCSBWorker.sql", stmt.toString());
             stmt.executeUpdate();
         }
+        AppendSQL.appendSql("YCSBWorker.sql", "EOF\n");
     }
 
 }
